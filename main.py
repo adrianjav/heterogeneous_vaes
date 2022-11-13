@@ -163,8 +163,8 @@ def main(hparams):
     model = type(model).load_from_checkpoint(trainer.checkpoint_callback.best_model_path, prob_model=prob_model)
     test(model, prob_model, test_loader, hparams.device)
 
-    test_mie_ll(model, prob_model, train_loader.dataset, hparams.device, title='Train')
-    test_mie_ll(model, prob_model, test_loader.dataset, hparams.device)
+    test_mie_ll(model, prob_model, train_loader.dataset, hparams.device, title='Train', missing=False)
+    test_mie_ll(model, prob_model, test_loader.dataset, hparams.device, missing=True)
 
 
 if __name__ == '__main__':
