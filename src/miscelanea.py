@@ -85,19 +85,25 @@ def timed(func):
 
 
 @torch.no_grad()
-def test_mie_ll(model, prob_model, dataset, device, title='Test'):
+def test_mie_ll(model, prob_model, dataset, device, title='Test', missing=True):
     model.eval()
     mean = lambda x: sum(x).item() / len(x)
 
     data = dataset[:][0]
-    mask = dataset[:][2]
+    observed_mask = dataset[:][1]
+    nan_mask = dataset[:][2]
 
-    mask_bc = dataset[:][2]
-    pred = model([dataset[:][0].to(device), mask_bc, None], mode=True).cpu()
+    if missing:
+        missing_mask = ((1 - observed_mask.long()) + nan_mask.long()) == 2
+        assert missing_mask.sum() > 0, 'There are no missing elements!'
+    else:
+        missing_mask = observed_mask
 
-    log_prob = model.log_likelihood_real(dataset[:][0].to(device), mask_bc.to(device))
-    log_prob = (log_prob * mask).sum(dim=0).cpu() / mask.sum(dim=0)
-    error = imputation_error(prob_model, pred, data, mask)
+    pred = model([dataset[:][0].to(device), observed_mask, None], mode=True).cpu()
+    log_prob = model.log_likelihood_real(dataset[:][0].to(device), observed_mask.to(device))
+
+    log_prob = (log_prob * missing_mask).sum(dim=0).cpu() / missing_mask.sum(dim=0)
+    error = imputation_error(prob_model, pred, data, missing_mask)
 
     nominal_ll = [e for e, [_, d] in zip(log_prob, prob_model.gathered) if d.real_dist.is_discrete]
     nominal_ll = mean(nominal_ll) if len(nominal_ll) > 0 else 0.
